@@ -14,10 +14,12 @@ import os
 # - high and low prices per day
 # - trading volume per day
 # - comprehensive plot with closing, volumes, and SMA + EMA
-def plot_stock_chart_yf(ticker, start, end, data, days, ma_days):
+def plot_stock_chart_yf(ticker, start, end, data, days, ma_days, so_days):
+
+    plt.rcParams['figure.figsize'] = [10, 4]
 
     linestylesdash = ['k-.', 'r-.', 'b--', 'g:', 'm-.', 'y:']
-    linestyles = ["k", "r", "b", "g", "m-.", "y-."]
+    linestyles = ["k", "r", "b", "g", "m", "y"]
 
     opens = data[:,3]
     closes = data[:,0]
@@ -60,6 +62,22 @@ def plot_stock_chart_yf(ticker, start, end, data, days, ma_days):
     ax.legend()
     plt.savefig(save_loc + ticker +"_volume.png")
 
+    # stochastic oscillator 
+    so, so_sma3 = stochastic_oscillator(closes, highs, lows, so_days)
+
+    ax.clear()
+    ax.plot(trading_days[so_days:], so, linestyles[1], label="%K, " + str(so_days)+" days")
+    ax.plot(trading_days[so_days+3:], so_sma3, linestyles[2], label="%D, 3 day SMA of %K")
+    ax.plot(trading_days, 80*np.ones(len(trading_days)), linestylesdash[0] )
+    ax.plot(trading_days, 20*np.ones(len(trading_days)), linestylesdash[0] )
+    ax.set_ylabel("Stochastic Value (%)")
+
+    ax.set_xlabel("trading days ("+ str(start) + ", " + str(end) +")" )
+    ax.set_title(" Fast stochastic oscillator (%K) with a 3 day SMA (%D) for " + ticker)
+    ax.legend()
+    plt.savefig(save_loc + ticker +"_stochastics.png")
+
+
     # comprehensive stock chart with volumes, closing price, SMA, EMA
     sma, ema = moving_averages(closes, ma_days)
 
@@ -86,13 +104,13 @@ def moving_averages(closes, ma_days):
 
     #simple moving average
     sma = []
-    for i in range(0,len(closes)):
+    for i in range(0,len(closes)-ma_days):
         sma_i = sum(closes[i:ma_days+i])/ma_days
         sma.append(sma_i)
 
     # we only want the first N=ma_days elements 
-    # e.g. because we cannot calculate the N day average during the first N days
-    sma_out = np.array(sma[:-ma_days])
+    # i.e. we cannot calculate the N day average during the first N days
+    sma_out = np.array(sma)
 
 
     #exponential moving average
@@ -110,8 +128,57 @@ def moving_averages(closes, ma_days):
 
     return sma_out, ema_out
 
+def stochastic_oscillator(closes, highs, lows, so_days):
+
+    # stochastic oscillator
+    so = []
+    
+
+    for i in range(0,len(closes)-so_days):
+        # most recent closing price
+        C = closes[i+so_days-1]
+        # lowest low price over the period
+        L = min(lows[i:i+so_days])
+        # highest high price over the period
+        H = max(highs[i:i+so_days])
+
+        # calculating each stochastic value as a percentage
+        sv = (C - L )/(H - L) * 100
+        so.append(sv)
+        
+
+    so = np.array(so)
+
+    # 3 period simple moving average of the stochastic oscillator
+    so_sma3 = []
+
+    for i in range(0,len(so)-3):
+        sv_sma3 = sum(so[i:3+i]) / 3
+        so_sma3.append(sv_sma3)
+
+    return so, np.array(so_sma3)
 
 
+
+# Extra notes:
+
+
+        # checks ran in the stochastic oscillator during index debugging
+        # ----------------------
+        # if C <= L:
+        #     print("C <= L at i = ", i)
+        #     print("-----------------")
+        #     print("closing = ", closes[i+so_days])
+        #     print("lows =", lows[i:i+so_days])
+        # if H <= L:
+        #     print("H <= L at i = ", i)
+        #     print("-----------------")
+        #     print("highs =", highs[i:i+so_days])
+        #     print("lows =", lows[i:i+so_days])
+
+        # print("C-L = ", C-L)
+        # print("H-L", H-L)
+        # ----------------------
 
 
 

@@ -26,6 +26,7 @@ sdyf = np.array(stockdata_yf)
 
 # moving average period in days
 ma_days = int(input("give number of days (< " +str(len(sdyf)) +") for moving average calculations: "))
+so_days = int(input("give number of days (reccommended 14) for stochastic oscillator calculation: "))
 
 # printing a sample of yahoo finance data
 print(ticker + " data from yahoo finance")
@@ -33,7 +34,8 @@ print("--------------------------------")
 print(stockdata_yf)
 print("--------------------------------")
 
+
 print("Charting" + ticker + " between dates " + str(start_date) + ", " + str(end_date))
 
-# performing calculations of SMA,EMA and generating and saving plots
-operations.plot_stock_chart_yf(ticker, start_date, end_date, sdyf, len(sdyf), ma_days)
+# performing calculations and making plots
+operations.plot_stock_chart_yf(ticker, start_date, end_date, sdyf, len(sdyf), ma_days, so_days)
