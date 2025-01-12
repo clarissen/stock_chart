@@ -16,7 +16,7 @@ import os
 # - comprehensive plot with closing, volumes, and SMA + EMA
 def plot_stock_chart_yf(ticker, start, end, data, days, ma_days, so_days):
 
-    plt.rcParams['figure.figsize'] = [10, 4]
+    plt.rcParams['figure.figsize'] = [12, 4]
 
     linestylesdash = ['k-.', 'r-.', 'b--', 'g:', 'm-.', 'y:']
     linestyles = ["k", "r", "b", "g", "m", "y"]
@@ -77,9 +77,25 @@ def plot_stock_chart_yf(ticker, start, end, data, days, ma_days, so_days):
     ax.legend()
     plt.savefig(save_loc + ticker +"_stochastics.png")
 
+    # macd and signal lines
+    macd, macd_shift, sig, sig_shift = ma_converg_diverg(closes)
+
+    ax.clear()
+    ax.plot(trading_days[macd_shift:], macd, linestyles[1], label="MACD")
+    ax.plot(trading_days[sig_shift:], sig, linestyles[2], label="Signal")
+
+    ax.set_ylabel("Value (USD)")
+
+    ax.set_xlabel("trading days ("+ str(start) + ", " + str(end) +")" )
+    ax.set_title("MACD and signal line for " + ticker)
+    ax.legend()
+    plt.savefig(save_loc + ticker +"_macd_sig.png")
+
+
 
     # comprehensive stock chart with volumes, closing price, SMA, EMA
-    sma, ema = moving_averages(closes, ma_days)
+    sma = simple_ma(closes, ma_days)
+    ema = exp_ma(closes, ma_days, sma)
 
     ax.clear()
     ax.plot(trading_days, closes, linestyles[2], label ="closing price (USD) ")
@@ -100,7 +116,8 @@ def plot_stock_chart_yf(ticker, start, end, data, days, ma_days, so_days):
 
     print("plots saved in " + save_loc)
 
-def moving_averages(closes, ma_days):
+
+def simple_ma(closes, ma_days):
 
     #simple moving average
     sma = []
@@ -112,12 +129,14 @@ def moving_averages(closes, ma_days):
     # i.e. we cannot calculate the N day average during the first N days
     sma_out = np.array(sma)
 
+    return sma_out
 
+def exp_ma(closes, ma_days, sma):
     #exponential moving average
     smoothing = 2/(ma_days+1)
     # the first ema data point is the SMA of the first N days closing prices
     # or the first SMA data point
-    ema = [sma_out[0]]
+    ema = [sma[0]]
     for i in range(1,len(closes)-ma_days):
         ema_i = smoothing*closes[ma_days+i] + (1- smoothing)*ema[i-1]
         ema.append(ema_i)
@@ -126,7 +145,7 @@ def moving_averages(closes, ma_days):
     # the EMA seems to be a more sensitive prediction tool during 
     # regions of higher market volatility
 
-    return sma_out, ema_out
+    return ema_out
 
 def stochastic_oscillator(closes, highs, lows, so_days):
 
@@ -157,6 +176,27 @@ def stochastic_oscillator(closes, highs, lows, so_days):
         so_sma3.append(sv_sma3)
 
     return so, np.array(so_sma3)
+
+
+def ma_converg_diverg(closes):
+
+    # calculating the sma as inputs for ema
+
+    sma_26 = simple_ma(closes, 26)
+
+    sma_12 = simple_ma(closes, 12)
+
+    ema_26 = exp_ma(closes, 26, sma_26)
+
+    ema_12 = exp_ma(closes, 12, sma_12)
+
+    # we must select only the shared period of data
+    macd = ema_12[(26-12):] - ema_26
+
+    sig = exp_ma(macd, 9, macd)
+
+    # returning the macd and signal and the length of time data we do not have for them
+    return macd, len(closes)-len(macd), sig, len(closes) - len(sig)
 
 
 
